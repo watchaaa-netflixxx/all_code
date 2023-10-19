@@ -597,8 +597,8 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
 
 
 # return = [1, 1, 0, ...] 
-# correct_list = correct_model(...)
-def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folder_path, data_Folder_path, model_Folder_path):
+# correct_list = correct_model(...) 
+def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folder_path, data_Folder_path, model_Folder_path):   # 작동 모름
 
     # class_int = 0~4                                   (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'	            (15초 잘라진 동영상이 있는 폴더)
@@ -684,12 +684,12 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folde
 ####################################################################################################################    skelton 및 운동정보 화면 저장
 
 
-def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, correct_label):
+def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):
 
     # class_int = 0~4                       (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'    (15초 영상 있는 폴더)
     # MVid_Folder_path = '../MVid_Folder/'  (최종 결과 영상 있는 폴더)
-    # correct_label = [1, 0, 1, 1, 0]        (correc_model 함수 반환값)
+    # cor_label = [1, 0, 1, 1, 0]        (correc_model 함수 반환값)
 
     if class_int == 0:
         exercise_type = "dead_lift"
@@ -763,7 +763,7 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, correct_label):
 
                 # 정확도 label 1이면 good 이라고 설정
                 if prev_status == False and status == True:
-                    if correct_label[acc_i] == 1:
+                    if cor_label[acc_i] == 1:
                         good += 1
                         acc_i += 1
                     else:
