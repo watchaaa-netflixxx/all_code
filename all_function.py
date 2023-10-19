@@ -15,6 +15,19 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
+
+#################################################################################################################### 
+
+
+# 실제 웹 상 코드
+
+# 세 줄만 쓰면 되도록 하긴 함
+
+# class_int = class_model(...)	(class_int에 운동종류 받아옴)
+# cor_list = correct_model(...)	(cor_list에 정확도 정보 받아옴)
+# vid2Mvid(...)		(skeleton 완성본 영상 저장)
+
+
 ####################################################################################################################    전처리 함수
 
 
@@ -684,7 +697,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folde
 ####################################################################################################################    skelton 및 운동정보 화면 저장
 
 
-def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):
+def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동 모름
 
     # class_int = 0~4                       (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'    (15초 영상 있는 폴더)
