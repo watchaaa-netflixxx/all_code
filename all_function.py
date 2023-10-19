@@ -36,6 +36,8 @@ def vid_cut(uploaded_video, Vid_Folder_path):       # 작동 완료
     
     # input 예시
     # vid_cut('./Vid_Folder/stu1_43.mp4', './Vid_Folder/')
+    # uploaded_video : 사용자가 업로드한 비디오 파일 경로
+    # Vid_Folder_path : 15초로 자른 비디오 폴더 경로
 
     video_duration = VideoFileClip(uploaded_video).duration
 
@@ -373,10 +375,10 @@ class TypeOfExercise(BodyPartAngle):
         right_leg_angle = self.angle_of_the_right_leg()
         avg_leg_angle = (left_leg_angle + right_leg_angle) // 2
         if status:
-            if avg_leg_angle < 100:
+            if avg_leg_angle < 120:
                 status = False
         else:
-            if avg_leg_angle > 160:
+            if avg_leg_angle > 150:
                 counter += 1
                 status = True
 
@@ -434,15 +436,7 @@ def save_video_segment(video_path, start_frame, end_frame, output_path):
 
 # 카운트 기준 영상 자르기
 # count_{i} 로 저장됨
-def vid2time(class_int, cut_video, count_cut_Folder_path):        # 작동 완료
-
-    # class_int = 정수값 (data2angle_classmodel 함수 반환값)
-    # cut_video = './15s_cut_video/15s.mp4'
-    # 잘라진 동영상 저장 경로 (이 폴더 내에 count_{count_i}.mp4 형식으로 저장됨)
-    # count_cut_Folder_path = './cut_Vid_Folder/'
-
-    # class_int로부터 exercise_type 결정하기
-    # '0':'바벨 데드리프트', '1':'바벨 로우', '2':'바벨 스쿼트', '3':'오버 헤드 프레스', '4':'푸시업'
+""" def vid2time(class_int, cut_video, count_cut_Folder_path):
 
     if class_int == 0:
         exercise_type = "dead_lift"
@@ -482,7 +476,7 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):        # 작동 완�
 
             if not ret:
                 break
-
+            
             # frame setup
             frame = cv2.resize(frame, (800, 480), interpolation=cv2.INTER_AREA)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -506,20 +500,93 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):        # 작동 완�
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
+    
+    # 카운트 별로 동영상 자르고 저장
+    start_frame = 1
+    count_i = 1
 
-        # 카운트 별로 동영상 자르고 저장
+    # 각각의 status 변화를 확인하며 동영상 저장 (모든 운동에 대해 적용됨!) 
+    # False -> True 기준으로 나눔
+    for i in range(3, len(status_list)):
+        if status_list[i-1] == False and status_list[i] == True:
+            end_frame = int(i * (total_frames / len(status_list))) + 25
+            # 저장할 파일 경로 설정
+            output_path = count_cut_Folder_path + f'count_{count_i}.mp4'
+            # 동영상 저장
+            save_video_segment(cut_video, start_frame, end_frame, output_path)
+            start_frame = int(i * (total_frames / len(status_list)))
+            count_i += 1
+
+    cap.release()
+    cv2.destroyAllWindows() """
+
+def vid2time(class_int, cut_video, count_cut_Folder_path):
+
+    video_source = cut_video
+
+    if class_int == 0:
+        exercise_type = "dead_lift"
+    elif class_int == 1:
+        exercise_type = "barbell_low"
+    elif class_int == 2:
+        exercise_type = "squat"
+    elif class_int == 3:
+        exercise_type = "overhead_press"
+    elif class_int == 4:
+        exercise_type = "push_up"
+
+    cap = cv2.VideoCapture(video_source)
+    status_list = []
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    mp_pose = mp.solutions.pose
+
+    with mp_pose.Pose(min_detection_confidence=0.5,
+                      min_tracking_confidence=0.5) as pose:
+
+        prev_status = True
+        prev_frame_time = 0
+
+        counter = 0
+        status = True
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+
+            if not ret:
+                break
+
+            frame = cv2.resize(frame, (800, 480), interpolation=cv2.INTER_AREA)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            results = pose.process(frame)
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+            try:
+                landmarks = results.pose_landmarks.landmark
+                counter, status = TypeOfExercise(landmarks).calculate_exercise(
+                    exercise_type, counter, status)
+
+                prev_status = status
+
+            except Exception as e:
+                print(f'Error in row: {e}')
+
+            status_list.append(status)
+
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break
+
         start_frame = 1
         count_i = 1
 
-        # 각각의 status 변화를 확인하며 동영상 저장 (모든 운동에 대해 적용됨!)
-        # False -> True 기준으로 나눔
         for i in range(3, len(status_list)):
             if status_list[i-1] == False and status_list[i] == True:
                 end_frame = int(i * (total_frames / len(status_list))) + 25
-                # 저장할 파일 경로 설정
                 output_path = count_cut_Folder_path + f'count_{count_i}.mp4'
-                # 동영상 저장
-                save_video_segment(cut_video, start_frame, end_frame, output_path)
+                save_video_segment(video_source, start_frame, end_frame, output_path)
                 start_frame = int(i * (total_frames / len(status_list)))
                 count_i += 1
 
@@ -577,7 +644,7 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
     ]
 
     # 열 이름 리스트 만들기
-    column_names = [f'{group[0]}_ANGLE' for group in point_groups]
+    column_names = [f'{group[1]}_ANGLE' for group in point_groups]
 
     # 각 그룹의 각도 계산 및 데이터프레임에 추가
     for group, col_name in zip(point_groups, column_names):
@@ -621,7 +688,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
     cut_video = Vid_Folder_path + '15s.mp4'
 
     # 카운트 별로 video 자르기
-    vid2time(class_int, cut_video, count_cut_Folder_path)
+    # vid2time(class_int, cut_video, count_cut_Folder_path)
 
     # count_{i}.mp4 파일이 몇개인지 모름 (만들 수 있을것 같긴 한데 귀찮)
     # glob로 파일 전부 긁어와서 for i in glob 로 몇 개인지 몰라도 다 반복되게 해야함.
@@ -632,15 +699,17 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
     all_count_path = count_cut_Folder_path + '*'        # count 별로 잘라진 모든 영상 선택하기 위함
     for count_cut_video in glob(all_count_path):
 
+        print(count_cut_video)
+
         # 32개 이미지 cut하여 저장
         vid2img(count_cut_video , cor_image_Folder_path) 
 
         # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
         image_Folder_s = cor_image_Folder_path +'/'
-        img2data(image_Folder_s, data_Folder_path)
+        img2data(image_Folder_s, cor_data_Folder_path)
         #####################################################
 
-        data_file = data_Folder_path + 'coordinate.csv'
+        data_file = cor_data_Folder_path + 'coordinate.csv'
         correct_model_file = model_Folder_path +'correct_model.h5'
 
         # 분류 model load
@@ -685,7 +754,11 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
 
         y_pred_class = np.argmax(y_pred, axis=1)
 
+        print(int(y_pred_class[0]))
+
         cor_label.append[int(y_pred_class[0])]
+
+        # print(cor_label)
 
     return cor_label
 
