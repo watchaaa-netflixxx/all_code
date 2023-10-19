@@ -587,7 +587,7 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
             [row[f'{group[2]}.x'], row[f'{group[2]}.y'], row[f'{group[2]}.z']]
         ), axis=1)
 
-    X = df_cor
+    X = df_cor.iloc[:,-8:]
 
     sequence_length = 32  # 시퀀스 길이 설정
     Xsequence = []
@@ -609,13 +609,13 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
 
 # return = [1, 1, 0, ...] 
 # correct_list = correct_model(...) 
-def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_Folder_path, data_Folder_path, model_Folder_path):   # 작동 모름
+def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_Folder_path, cor_data_Folder_path, model_Folder_path):   # 작동 모름
 
     # class_int = 0~4                                   (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'	            (15초 잘라진 동영상이 있는 폴더)
     # count_cut_Folder_path = '../cut_Vid_Folder/'      (카운트 별 잘라진 동영상 있는 폴더)
     # cor_image_Folder_path = '../cor_image_Folder'	        (32개 이미지가 있는 폴더)
-    # data_Folder_path = '../cor_data/'                 (correct model 전용 좌표값 csv 있는 폴더)
+    # cor_data_Folder_path = '../cor_data/'                 (correct model 전용 좌표값 csv 있는 폴더)
     # model_Folder_path = '../model/'	                (classifycation model이 있는 폴더)
 
     cut_video = Vid_Folder_path + '15s.mp4'
