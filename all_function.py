@@ -531,7 +531,7 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):        # 작동 완�
 
 
 # return = int(y_pred_class[0]) (운동 분류 값)
-# class_int = classmodel(...)
+# class_int = class_model(...)
 def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_path , model_Folder_path):          # 작동 모름
 
     # input 예시
@@ -587,8 +587,6 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
             [row[f'{group[2]}.x'], row[f'{group[2]}.y'], row[f'{group[2]}.z']]
         ), axis=1)
 
-    df_cor.drop(columns=['img_key'], inplace = True)
-
     X = df_cor
 
     sequence_length = 32  # 시퀀스 길이 설정
@@ -611,12 +609,12 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
 
 # return = [1, 1, 0, ...] 
 # correct_list = correct_model(...) 
-def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folder_path, data_Folder_path, model_Folder_path):   # 작동 모름
+def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_Folder_path, data_Folder_path, model_Folder_path):   # 작동 모름
 
     # class_int = 0~4                                   (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'	            (15초 잘라진 동영상이 있는 폴더)
     # count_cut_Folder_path = '../cut_Vid_Folder/'      (카운트 별 잘라진 동영상 있는 폴더)
-    # image_Folder_path = '../cor_image_Folder'	        (32개 이미지가 있는 폴더)
+    # cor_image_Folder_path = '../cor_image_Folder'	        (32개 이미지가 있는 폴더)
     # data_Folder_path = '../cor_data/'                 (correct model 전용 좌표값 csv 있는 폴더)
     # model_Folder_path = '../model/'	                (classifycation model이 있는 폴더)
 
@@ -635,10 +633,10 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folde
     for count_cut_video in glob(all_count_path):
 
         # 32개 이미지 cut하여 저장
-        vid2img(count_cut_video , image_Folder_path) 
+        vid2img(count_cut_video , cor_image_Folder_path) 
 
         # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
-        image_Folder_s = image_Folder_path +'/'
+        image_Folder_s = cor_image_Folder_path +'/'
         img2data(image_Folder_s, data_Folder_path)
         #####################################################
 
@@ -672,8 +670,6 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folde
                 [row[f'{group[1]}.x'], row[f'{group[1]}.y'], row[f'{group[1]}.z']],
                 [row[f'{group[2]}.x'], row[f'{group[2]}.y'], row[f'{group[2]}.z']]
             ), axis=1)
-
-        df_cor.drop(columns=['img_key'], inplace = True)
 
         X = df_cor
 
