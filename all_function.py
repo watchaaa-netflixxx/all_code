@@ -10,7 +10,7 @@ import argparse
 import moviepy.editor
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from moviepy.editor import VideoFileClip
-
+from glob import glob
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -421,12 +421,12 @@ def save_video_segment(video_path, start_frame, end_frame, output_path):
 
 # 카운트 기준 영상 자르기
 # count_{i} 로 저장됨
-def vid2time(class_int, cut_video, cut_Vid_Folder_path):        # 작동 완료
+def vid2time(class_int, cut_video, count_cut_Folder_path):        # 작동 완료
 
     # class_int = 정수값 (data2angle_classmodel 함수 반환값)
     # cut_video = './15s_cut_video/15s.mp4'
     # 잘라진 동영상 저장 경로 (이 폴더 내에 count_{count_i}.mp4 형식으로 저장됨)
-    # cut_Vid_Folder_path = './cut_Vid_Folder/'
+    # count_cut_Folder_path = './cut_Vid_Folder/'
 
     # class_int로부터 exercise_type 결정하기
     # '0':'바벨 데드리프트', '1':'바벨 로우', '2':'바벨 스쿼트', '3':'오버 헤드 프레스', '4':'푸시업'
@@ -504,7 +504,7 @@ def vid2time(class_int, cut_video, cut_Vid_Folder_path):        # 작동 완료
             if status_list[i-1] == False and status_list[i] == True:
                 end_frame = int(i * (total_frames / len(status_list))) + 25
                 # 저장할 파일 경로 설정
-                output_path = cut_Vid_Folder_path + f'count_{count_i}.mp4'
+                output_path = count_cut_Folder_path + f'count_{count_i}.mp4'
                 # 동영상 저장
                 save_video_segment(cut_video, start_frame, end_frame, output_path)
                 start_frame = int(i * (total_frames / len(status_list)))
@@ -595,16 +595,80 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
 
 ####################################################################################################################    correct model
 
+
 # return = [1, 1, 0, ...] 
 # correct_list = correct_model(...)
-def correct_model(class_int, Vid_Folder_path, cut_Vid_Folder_path):
+def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folder_path):
 
-    # class_int = 0~4                       (class_model 함수 반환값)
+    # class_int = 0~4                                   (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'	            (15초 잘라진 동영상이 있는 폴더)
-    # cut_Vid_Folder_path = './cut_Vid_Folder/' (카운트 별 잘라진 동영상 있는 폴더)
+    # cut_Vid_Folder_path = '../cut_Vid_Folder/'        (카운트 별 잘라진 동영상 있는 폴더)
 
     cut_video = Vid_Folder_path + '15s.mp4'
-    vid2time(class_int, cut_video, cut_Vid_Folder_path)
+    # 카운트 별로 video 자르기
+    vid2time(class_int, cut_video, count_cut_Folder_path)
+    
+    # count_{i}.mp4 파일이 몇개인지 모름 (만들 수 있을것 같긴 한데 귀찮)
+    # glob로 파일 전부 긁어와서 for i in glob 로 몇 개인지 몰라도 다 반복되게 해야함.
+
+    all_count_path = count_cut_Folder_path + '*'        # count 별로 잘라진 모든 영상 선택하기 위함
+    for i in glob(all_count_path):
+        # 32개 이미지 cut하여 저장
+        cut_video = Vid_Folder_path + '15s.mp4'
+        vid2img(cut_video , image_Folder_path ) 
+
+        # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
+        image_Folder_s = image_Folder_path +'/'
+        img2data(image_Folder_s, data_Folder_path )
+        #####################################################
+
+        data_file = data_Folder_path + 'coordinate.csv'
+        class_model_file = model_Folder_path +'classify_model.h5'
+
+        # 분류 model load
+        class_model = tf.keras.models.load_model(class_model_file)
+
+        # 32*99 dataframe
+        df_cor = pd.read_csv(data_file)
+
+        point_groups = [
+        ('LEFT_SHOULDER', 'LEFT_ELBOW', 'LEFT_WRIST'),
+        ('LEFT_HIP', 'LEFT_SHOULDER', 'LEFT_ELBOW'),
+        ('LEFT_KNEE', 'LEFT_HIP', 'LEFT_SHOULDER'),
+        ('LEFT_ANKLE', 'LEFT_KNEE', 'LEFT_HIP'),
+        ('RIGHT_SHOULDER', 'RIGHT_ELBOW', 'RIGHT_WRIST'),
+        ('RIGHT_HIP', 'RIGHT_SHOULDER', 'RIGHT_ELBOW'),
+        ('RIGHT_KNEE', 'RIGHT_HIP', 'RIGHT_SHOULDER'),
+        ('RIGHT_ANKLE', 'RIGHT_KNEE', 'RIGHT_HIP')
+        ]
+
+        # 열 이름 리스트 만들기
+        column_names = [f'{group[0]}_ANGLE' for group in point_groups]
+
+        # 각 그룹의 각도 계산 및 데이터프레임에 추가
+        for group, col_name in zip(point_groups, column_names):
+            df_cor[col_name] = df_cor.apply(lambda row: calculate_3d(
+                [row[f'{group[0]}.x'], row[f'{group[0]}.y'], row[f'{group[0]}.z']],
+                [row[f'{group[1]}.x'], row[f'{group[1]}.y'], row[f'{group[1]}.z']],
+                [row[f'{group[2]}.x'], row[f'{group[2]}.y'], row[f'{group[2]}.z']]
+            ), axis=1)
+
+        df_cor.drop(columns=['img_key'], inplace = True)
+
+        X = df_cor
+
+        sequence_length = 32  # 시퀀스 길이 설정
+        Xsequence = []
+
+        for i in range(0, len(X) - sequence_length + 1, sequence_length):
+            Xsequence.append(X[i:i+sequence_length])
+
+        Xsequence = np.array(Xsequence)
+
+        y_pred = class_model.predict(Xsequence)
+
+        y_pred_class = np.argmax(y_pred, axis=1)
+
 
 
 ####################################################################################################################    skelton 및 운동정보 화면 저장
