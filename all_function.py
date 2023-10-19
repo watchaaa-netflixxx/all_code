@@ -604,9 +604,9 @@ def correct_model(class_int, Vid_Folder_path, cut_Vid_Folder_path):
 
 ####################################################################################################################    skelton 및 운동정보 화면 저장
 
-test_label = [1, 0, 1, 1, 0]
+# test_label = [1, 0, 1, 1, 0]
 
-def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path):
+def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, correct_label):
 
     # class_int = 0~4                       (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'    (15초 영상 있는 폴더)
@@ -642,9 +642,6 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path):
     # status 변화를 저장할 리스트
     status_list = []
 
-    # 프레임 수 계산
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
     # setup mediapipe
     mp_drawing_styles = mp.solutions.drawing_styles
     mp_drawing = mp.solutions.drawing_utils
@@ -654,7 +651,6 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path):
                       min_tracking_confidence=0.5) as pose:
 
         prev_status = True    # status 바뀔 때 동영상 시간 초 표시 위함
-        prev_frame_time = 0
 
         counter = 0  # movement of exercise
         status = True  # state of move
@@ -687,7 +683,7 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path):
 
                 # 정확도 label 1이면 good 이라고 설정
                 if prev_status == False and status == True:
-                    if test_label[acc_i] == 1:
+                    if correct_label[acc_i] == 1:
                         good += 1
                         acc_i += 1
                     else:
