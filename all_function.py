@@ -518,7 +518,7 @@ def vid2time(class_int, cut_video, cut_Vid_Folder_path):        # 작동 완료
 
 
 # return = int(y_pred_class[0]) (운동 분류 값)
-# class = classmodel(...)
+# class_int = classmodel(...)
 def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_path , model_Folder_path):          # 작동 모름
 
     # input 예시
@@ -595,8 +595,13 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
 
 ####################################################################################################################    correct model
 
-
+# return = [1, 1, 0, ...] 
+# correct_list = correct_model(...)
 def correct_model(class_int, Vid_Folder_path, cut_Vid_Folder_path):
+
+    # class_int = 0~4                       (class_model 함수 반환값)
+    # Vid_Folder_path = '../Vid_Folder/'	            (15초 잘라진 동영상이 있는 폴더)
+    # cut_Vid_Folder_path = './cut_Vid_Folder/' (카운트 별 잘라진 동영상 있는 폴더)
 
     cut_video = Vid_Folder_path + '15s.mp4'
     vid2time(class_int, cut_video, cut_Vid_Folder_path)
@@ -604,13 +609,13 @@ def correct_model(class_int, Vid_Folder_path, cut_Vid_Folder_path):
 
 ####################################################################################################################    skelton 및 운동정보 화면 저장
 
-# test_label = [1, 0, 1, 1, 0]
 
 def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, correct_label):
 
     # class_int = 0~4                       (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'    (15초 영상 있는 폴더)
     # MVid_Folder_path = '../MVid_Folder/'  (최종 결과 영상 있는 폴더)
+    # correct_label = [1, 0, 1, 1, 0]        (correc_model 함수 반환값)
 
     if class_int == 0:
         exercise_type = "dead_lift"
@@ -650,9 +655,10 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, correct_label):
     with mp_pose.Pose(min_detection_confidence=0.5,
                       min_tracking_confidence=0.5) as pose:
 
-        prev_status = True    # status 바뀔 때 동영상 시간 초 표시 위함
+        
 
         counter = 0  # movement of exercise
+        prev_status = True    # status 바뀔 때 동영상 시간 초 표시 위함
         status = True  # state of move
 
         # 정확도 측정용 카운트
