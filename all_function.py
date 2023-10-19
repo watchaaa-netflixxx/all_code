@@ -598,35 +598,42 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
 
 # return = [1, 1, 0, ...] 
 # correct_list = correct_model(...)
-def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folder_path):
+def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folder_path, data_Folder_path, model_Folder_path):
 
     # class_int = 0~4                                   (class_model 함수 반환값)
     # Vid_Folder_path = '../Vid_Folder/'	            (15초 잘라진 동영상이 있는 폴더)
-    # cut_Vid_Folder_path = '../cut_Vid_Folder/'        (카운트 별 잘라진 동영상 있는 폴더)
+    # count_cut_Folder_path = '../cut_Vid_Folder/'      (카운트 별 잘라진 동영상 있는 폴더)
+    # image_Folder_path = '../cor_image_Folder'	        (32개 이미지가 있는 폴더)
+    # data_Folder_path = '../cor_data/'                 (correct model 전용 좌표값 csv 있는 폴더)
+    # model_Folder_path = '../model/'	                (classifycation model이 있는 폴더)
 
     cut_video = Vid_Folder_path + '15s.mp4'
+
     # 카운트 별로 video 자르기
     vid2time(class_int, cut_video, count_cut_Folder_path)
-    
+
     # count_{i}.mp4 파일이 몇개인지 모름 (만들 수 있을것 같긴 한데 귀찮)
     # glob로 파일 전부 긁어와서 for i in glob 로 몇 개인지 몰라도 다 반복되게 해야함.
 
+    # return 값 : correct label (카운트 순서대로)
+    cor_label = []
+
     all_count_path = count_cut_Folder_path + '*'        # count 별로 잘라진 모든 영상 선택하기 위함
-    for i in glob(all_count_path):
+    for count_cut_video in glob(all_count_path):
+
         # 32개 이미지 cut하여 저장
-        cut_video = Vid_Folder_path + '15s.mp4'
-        vid2img(cut_video , image_Folder_path ) 
+        vid2img(count_cut_video , image_Folder_path) 
 
         # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
         image_Folder_s = image_Folder_path +'/'
-        img2data(image_Folder_s, data_Folder_path )
+        img2data(image_Folder_s, data_Folder_path)
         #####################################################
 
         data_file = data_Folder_path + 'coordinate.csv'
-        class_model_file = model_Folder_path +'classify_model.h5'
+        correct_model_file = model_Folder_path +'correct_model.h5'
 
         # 분류 model load
-        class_model = tf.keras.models.load_model(class_model_file)
+        class_model = tf.keras.models.load_model(correct_model_file)
 
         # 32*99 dataframe
         df_cor = pd.read_csv(data_file)
@@ -669,6 +676,9 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, image_Folde
 
         y_pred_class = np.argmax(y_pred, axis=1)
 
+        cor_label.append[int(y_pred_class[0])]
+
+    return cor_label
 
 
 ####################################################################################################################    skelton 및 운동정보 화면 저장
