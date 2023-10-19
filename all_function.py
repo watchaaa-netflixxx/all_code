@@ -519,7 +519,7 @@ def vid2time(class_int, cut_video, cut_Vid_Folder_path):        # 작동 완료
 
 # return = int(y_pred_class[0]) (운동 분류 값)
 # class = classmodel(...)
-def classmodel(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_path , model_Folder_path):          # 작동 모름
+def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_path , model_Folder_path):          # 작동 모름
 
     # input 예시
     # uploded_video = '../uploded_video/stu1_43.mp4'    (사용자가 업로드한 영상)
@@ -596,9 +596,143 @@ def classmodel(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_p
 ####################################################################################################################    correct model
 
 
-def correctmodel(class_int, Vid_Folder_path, cut_Vid_Folder_path):
+def correct_model(class_int, Vid_Folder_path, cut_Vid_Folder_path):
 
     cut_video = Vid_Folder_path + '15s.mp4'
     vid2time(class_int, cut_video, cut_Vid_Folder_path)
+
+
+####################################################################################################################    skelton 및 운동정보 화면 저장
+
+test_label = [1, 0, 1, 1, 0]
+
+def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path):
+
+    # class_int = 0~4                       (class_model 함수 반환값)
+    # Vid_Folder_path = '../Vid_Folder/'    (15초 영상 있는 폴더)
+    # MVid_Folder_path = '../MVid_Folder/'  (최종 결과 영상 있는 폴더)
+
+    if class_int == 0:
+        exercise_type = "dead_lift"
+    elif class_int == 1:
+        exercise_type = "barbell_low"
+    elif class_int == 2:
+        exercise_type = " squat"
+    elif class_int == 3:
+        exercise_type = "overhead_press"
+    elif class_int == 4:
+        exercise_type = "push_up"
+
+    # 15초 video 파일
+    cut_video = Vid_Folder_path + '15s.mp4'
+
+    # skeleton only video 파일 저장하기
+    skeleton_output_path = MVid_Folder_path + 'MVid.mp4'
+
+    cap = cv2.VideoCapture(cut_video)
+
+    # 빈 프레임 규격 설정 (흰 배경)
+    frame_width = 800
+    frame_height = 480
+
+    # VideoWriter 설정
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(skeleton_output_path, fourcc, 30, (frame_width, frame_height))
+
+    # status 변화를 저장할 리스트
+    status_list = []
+
+    # 프레임 수 계산
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # setup mediapipe
+    mp_drawing_styles = mp.solutions.drawing_styles
+    mp_drawing = mp.solutions.drawing_utils
+    mp_pose = mp.solutions.pose
+
+    with mp_pose.Pose(min_detection_confidence=0.5,
+                      min_tracking_confidence=0.5) as pose:
+
+        prev_status = True    # status 바뀔 때 동영상 시간 초 표시 위함
+        prev_frame_time = 0
+
+        counter = 0  # movement of exercise
+        status = True  # state of move
+
+        # 정확도 측정용 카운트
+        good = 0
+        bad = 0
+        acc_i = 0
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+
+            if not ret:
+                break
+
+            # 불러온 동영상 frame setting
+            frame = cv2.resize(frame, (frame_width, frame_height), interpolation=cv2.INTER_AREA)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # mediapipe 적용
+            results = pose.process(frame)
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+            try:
+                # count 계산
+                landmarks = results.pose_landmarks.landmark
+                counter, status = TypeOfExercise(landmarks).calculate_exercise(
+                    exercise_type, counter, status)
+
+                # 정확도 label 1이면 good 이라고 설정
+                if prev_status == False and status == True:
+                    if test_label[acc_i] == 1:
+                        good += 1
+                        acc_i += 1
+                    else:
+                        bad += 1
+                        acc_i += 1
+
+                prev_status = status
+
+            except Exception as e:
+                print(f'Error in row: {e}')
+
+            # status 변화를 저장
+            status_list.append(status)
+
+            # 빈 프레임 생성 (흰 배경)
+            blank_frame = np.ones((frame_height, frame_width, 3), np.uint8) * 255
+
+            # RGB로 변환 (없으면 skeleton 품질 안좋아짐)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Pose 적용
+            results = pose.process(frame_rgb)
+
+            if results.pose_landmarks is not None:
+
+                # 화면에 정보 표시
+                blank_frame = score_table_plus(exercise_type, blank_frame, counter, good, bad, status)
+
+                # 스켈레톤 그리기
+                mp_drawing.draw_landmarks(
+                    blank_frame,
+                    results.pose_landmarks,
+                    mp_pose.POSE_CONNECTIONS,
+                    landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+                )
+
+                # output 영상에 추가
+                out.write(blank_frame)
+
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break
+
+        out.release()
+        cap.release()
+        cv2.destroyAllWindows()
+
 
 
