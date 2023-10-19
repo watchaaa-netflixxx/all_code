@@ -520,6 +520,8 @@ def save_video_segment(video_path, start_frame, end_frame, output_path):
     cap.release()
     cv2.destroyAllWindows() """
 
+mp_pose = mp.solutions.pose
+
 def vid2time(class_int, cut_video, count_cut_Folder_path):
 
     video_source = cut_video
@@ -539,8 +541,6 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):
     status_list = []
 
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    mp_pose = mp.solutions.pose
 
     with mp_pose.Pose(min_detection_confidence=0.5,
                       min_tracking_confidence=0.5) as pose:
