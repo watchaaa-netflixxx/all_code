@@ -23,15 +23,15 @@ from tensorflow.keras import layers
 
 # 세 줄만 쓰면 되도록 하긴 함
 
-# class_int = class_model(...)	(class_int에 운동종류 받아옴)
-# cor_list = correct_model(...)	(cor_list에 정확도 정보 받아옴)
-# vid2Mvid(...)		(skeleton 완성본 영상 저장)
+# class_int = class_model(...)	    (class_int에 운동종류 받아옴)
+# cor_list = correct_model(...)	    (cor_list에 정확도 정보 받아옴)
+# vid2Mvid(...)		                (skeleton 완성본 영상 저장)
 
 
 ####################################################################################################################    전처리 함수
 
 
-# 저장되는 비디오 이름 "15s.mp4"
+# 업로드된 영상 16초로 잘라서 저장. 저장되는 비디오 이름 "15s.mp4"
 def vid_cut(uploaded_video, Vid_Folder_path):       # 작동 완료
     
     # input 예시
@@ -51,7 +51,7 @@ def vid_cut(uploaded_video, Vid_Folder_path):       # 작동 완료
     output_path = Vid_Folder_path + "15s.mp4"  # Output file name
     ffmpeg_extract_subclip(uploaded_video, start_time, start_time + clip_duration, targetname=output_path)
 
-# 저장되는 이미지 이름 "frame-00" ~ "frame-31"
+# 16초 기준 32장 저장. 저장되는 이미지 이름 "frame-00" ~ "frame-31"
 def vid2img(cut_video, image_Folder_path , rate=0.5, frameName='frame'):     # 작동 완료
     
     # input 예시
@@ -713,12 +713,12 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
 # correct_list = correct_model(...) 
 def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_Folder_path, cor_data_Folder_path, model_Folder_path):   # 작동 모름
 
-    # class_int = 0~4                                   (class_model 함수 반환값)
-    # Vid_Folder_path = '../Vid_Folder/'	            (15초 잘라진 동영상이 있는 폴더)
-    # count_cut_Folder_path = '../cut_Vid_Folder/'      (카운트 별 잘라진 동영상 있는 폴더)
+    # class_int = 0~4                                       (class_model 함수 반환값)
+    # Vid_Folder_path = '../Vid_Folder/'	                (15초 잘라진 동영상이 있는 폴더)
+    # count_cut_Folder_path = '../cut_Vid_Folder/'          (카운트 별 잘라진 동영상 있는 폴더)
     # cor_image_Folder_path = '../cor_image_Folder'	        (32개 이미지가 있는 폴더)
     # cor_data_Folder_path = '../cor_data/'                 (correct model 전용 좌표값 csv 있는 폴더)
-    # model_Folder_path = '../model/'	                (classifycation model이 있는 폴더)
+    # model_Folder_path = '../model/'	                    (classifycation model이 있는 폴더)
 
     # 카운트 별로 video 자르기
     # cut_video = Vid_Folder_path + '15s.mp4'
@@ -741,6 +741,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
         image_Folder_s = cor_image_Folder_path +'/'
         img2data(image_Folder_s, cor_data_Folder_path)
+
         #####################################################
 
         data_file = cor_data_Folder_path + 'coordinate.csv'
@@ -776,7 +777,6 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
 
         X = df_cor
         print(X.shape)
-        X.head()
 
         sequence_length = 32  # 시퀀스 길이 설정
         Xsequence = []
@@ -792,7 +792,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
 
         print(int(y_pred_class[0]))
 
-        cor_label.append[int(y_pred_class[0])]
+        cor_label.append(int(y_pred_class[0]))
 
         # print(cor_label)
 
@@ -814,7 +814,7 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
     elif class_int == 1:
         exercise_type = "barbell_low"
     elif class_int == 2:
-        exercise_type = " squat"
+        exercise_type = "squat"
     elif class_int == 3:
         exercise_type = "overhead_press"
     elif class_int == 4:
