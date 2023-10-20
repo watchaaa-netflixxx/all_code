@@ -83,6 +83,28 @@ def vid2img(cut_video, image_Folder_path , rate=0.5, frameName='frame'):     # �
         frame += rate
         count += 1
 
+# 영상 길이와 상관없이 32장의 이미지 추출
+def vid2img_anything(cut_video, image_Folder_path, num_frames=32, frameName='frame'):
+
+    vidcap = cv2.VideoCapture(cut_video)
+
+    count = 0
+
+    if not os.path.isdir(image_Folder_path):
+        os.mkdir(image_Folder_path)
+
+    success = True
+    while success and count < num_frames:
+        success, image = vidcap.read()
+
+        if not success:
+            break
+
+        #print('extracting frame ' + frameName + '-%s.png' % str(count).zfill(2))
+        name = os.path.join(image_Folder_path, frameName + '-%s.png' % str(count).zfill(2)) # save frame as PNG file
+        cv2.imwrite(name, image)
+        count += 1
+
 # img2data() 함수에서 사용
 def resize(image, DESIRED_WIDTH, DESIRED_HEIGHT):       # 작동 완료
 
@@ -431,9 +453,6 @@ def save_video_segment(video_path, start_frame, end_frame, output_path):
     out.release()
     cap.release()
 
-
-    # exercise_type 설정  ************************** 나중에 분류 모델에서 출력값 받아야 함
-
 # 카운트 기준 영상 자르기
 # count_{i} 로 저장됨
 """ def vid2time(class_int, cut_video, count_cut_Folder_path):
@@ -524,6 +543,8 @@ mp_pose = mp.solutions.pose
 
 def vid2time(class_int, cut_video, count_cut_Folder_path):
 
+    # class_int: 
+
     video_source = cut_video
 
     if class_int == 0:
@@ -542,11 +563,12 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):
 
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    
     with mp_pose.Pose(min_detection_confidence=0.5,
                       min_tracking_confidence=0.5) as pose:
 
-        prev_status = True
-        prev_frame_time = 0
+        # prev_status = True
+        # prev_frame_time = 0
 
         counter = 0
         status = True
@@ -562,33 +584,46 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):
 
             results = pose.process(frame)
 
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            if results.pose_landmarks is not None:
 
-            try:
-                landmarks = results.pose_landmarks.landmark
-                counter, status = TypeOfExercise(landmarks).calculate_exercise(
-                    exercise_type, counter, status)
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-                prev_status = status
+                try:
+                    landmarks = results.pose_landmarks.landmark
+                    counter, status = TypeOfExercise(landmarks).calculate_exercise(
+                        exercise_type, counter, status)
 
-            except Exception as e:
-                print(f'Error in row: {e}')
+                    # prev_status = status
 
-            status_list.append(status)
+                    status_list.append(status)
+
+                except Exception as e:
+                    print(f'Error in row: {e}')
+
+            else:
+                print("No landmarks detected in this frame")
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
 
-        start_frame = 1
         count_i = 1
 
-        for i in range(3, len(status_list)):
+        start_frame = 1
+
+        for i in range(1, len(status_list)-2):
             if status_list[i-1] == False and status_list[i] == True:
-                end_frame = int(i * (total_frames / len(status_list))) + 25
+                # start_frame = int(i * (total_frames / len(status_list))) - 10
+
+                end_frame = int(i * (total_frames / len(status_list))) + 10
+
+                # Ensure start_frame and end_frame are within valid range
+                # start_frame = max(start_frame, 1)
+                end_frame = min(end_frame, total_frames)
+
                 output_path = count_cut_Folder_path + f'count_{count_i}.mp4'
                 save_video_segment(video_source, start_frame, end_frame, output_path)
-                start_frame = int(i * (total_frames / len(status_list)))
                 count_i += 1
+                start_frame = int(i * (total_frames / len(status_list)))
 
         cap.release()
         cv2.destroyAllWindows()
@@ -685,9 +720,8 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
     # cor_data_Folder_path = '../cor_data/'                 (correct model 전용 좌표값 csv 있는 폴더)
     # model_Folder_path = '../model/'	                (classifycation model이 있는 폴더)
 
-    cut_video = Vid_Folder_path + '15s.mp4'
-
     # 카운트 별로 video 자르기
+    # cut_video = Vid_Folder_path + '15s.mp4'
     # vid2time(class_int, cut_video, count_cut_Folder_path)
 
     # count_{i}.mp4 파일이 몇개인지 모름 (만들 수 있을것 같긴 한데 귀찮)
@@ -702,7 +736,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         print(count_cut_video)
 
         # 32개 이미지 cut하여 저장
-        vid2img(count_cut_video , cor_image_Folder_path) 
+        vid2img_anything(count_cut_video, cor_image_Folder_path, num_frames=32, frameName='frame') 
 
         # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
         image_Folder_s = cor_image_Folder_path +'/'
@@ -713,7 +747,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         correct_model_file = model_Folder_path +'correct_model.h5'
 
         # 분류 model load
-        class_model = tf.keras.models.load_model(correct_model_file)
+        correct_model = tf.keras.models.load_model(correct_model_file)
 
         # 32*99 dataframe
         df_cor = pd.read_csv(data_file)
@@ -741,6 +775,8 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
             ), axis=1)
 
         X = df_cor
+        print(X.shape)
+        X.head()
 
         sequence_length = 32  # 시퀀스 길이 설정
         Xsequence = []
@@ -750,7 +786,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
 
         Xsequence = np.array(Xsequence)
 
-        y_pred = class_model.predict(Xsequence)
+        y_pred = correct_model.predict(Xsequence)
 
         y_pred_class = np.argmax(y_pred, axis=1)
 
