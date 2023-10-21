@@ -709,26 +709,21 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
         df_cor[new_col_name] = df_cor[col1] - df_cor[col2]
 
     X = df_cor[['LEFT_WRIST_y2LEFT_ELBOW_y','LEFT_ELBOW_ANGLE','LEFT_ELBOW_y2LEFT_SHOULDER_y','LEFT_SHOULDER_ANGLE','LEFT_SHOULDER_y2LEFT_HIP_y','LEFT_HIP_ANGLE','LEFT_HIP_y2LEFT_KNEE_y','LEFT_KNEE_ANGLE','LEFT_KNEE_y2LEFT_ANKLE_y','RIGHT_KNEE_y2RIGHT_ANKLE_y','RIGHT_KNEE_ANGLE','RIGHT_HIP_y2RIGHT_KNEE_y','RIGHT_HIP_ANGLE','RIGHT_SHOULDER_y2RIGHT_HIP_y','RIGHT_SHOULDER_ANGLE','RIGHT_ELBOW_y2RIGHT_SHOULDER_y','RIGHT_ELBOW_ANGLE','RIGHT_WRIST_y2RIGHT_ELBOW_y']]
-
-    """ X = df_cor.iloc[:,-8:]
-
+    print(len(X))
     sequence_length = 32  # 시퀀스 길이 설정
     Xsequence = []
 
     for i in range(0, len(X) - sequence_length + 1, sequence_length):
-        Xsequence.append(X[i:i+sequence_length]) """
+        Xsequence.append(X[i:i+sequence_length]) 
 
-    X= np.array(X)
+    Xsequence = np.array(Xsequence)
+    print('Xsequence.shape: ', Xsequence.shape)
 
-    y_pred = class_model.predict(X)
-    
-    unique_values, counts = np.unique(y_pred, return_counts=True)
+    y_pred = class_model.predict(Xsequence)
+    print('y_pred: ', y_pred)
+    y_pred_class = np.argmax(y_pred, axis=1)
 
-    # 가장 많이 나온 클래스 찾기
-    class_int = unique_values[np.argmax(counts)]
-    print('class_int type: ', type(class_int))
-
-    return class_int
+    return int(y_pred_class[0])
 
 
 ####################################################################################################################    correct model
@@ -831,7 +826,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
 
         data = df_cor[['LEFT_WRIST_y2LEFT_ELBOW_y','LEFT_ELBOW_ANGLE','LEFT_ELBOW_y2LEFT_SHOULDER_y','LEFT_SHOULDER_ANGLE','LEFT_SHOULDER_y2LEFT_HIP_y','LEFT_HIP_ANGLE','LEFT_HIP_y2LEFT_KNEE_y','LEFT_KNEE_ANGLE','LEFT_KNEE_y2LEFT_ANKLE_y',sort_column,'RIGHT_KNEE_y2RIGHT_ANKLE_y','RIGHT_KNEE_ANGLE','RIGHT_HIP_y2RIGHT_KNEE_y','RIGHT_HIP_ANGLE','RIGHT_SHOULDER_y2RIGHT_HIP_y','RIGHT_SHOULDER_ANGLE','RIGHT_ELBOW_y2RIGHT_SHOULDER_y','RIGHT_ELBOW_ANGLE','RIGHT_WRIST_y2RIGHT_ELBOW_y']]
         X = data
-        print('X shape: 'X.shape)
+        print('X shape: ',X.shape)
 
         sequence_length = 32  # 시퀀스 길이 설정
         Xsequence = []
