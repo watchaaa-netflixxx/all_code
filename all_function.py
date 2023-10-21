@@ -770,18 +770,18 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         #####################################################
 
         if class_int == 0:
-        exercise_type = "dead_lift"
+            correct_model_file = model_Folder_path +'0_correct_model.h5'
         elif class_int == 1:
-            exercise_type = "barbell_low"
+            correct_model_file = model_Folder_path +'1_correct_model.h5'
         elif class_int == 2:
-            exercise_type = "squat"
+            correct_model_file = model_Folder_path +'2_correct_model.h5'
         elif class_int == 3:
-            exercise_type = "overhead_press"
+            correct_model_file = model_Folder_path +'3_correct_model.h5'
         elif class_int == 4:
-        exercise_type = "push_up"
+            correct_model_file = model_Folder_path +'4_correct_model.h5'
 
         data_file = cor_data_Folder_path + 'coordinate.csv'
-        correct_model_file = model_Folder_path +'correct_model.h5'
+        # correct_model_file = model_Folder_path +'correct_model.h5'
 
         # 분류 model load
         correct_model = tf.keras.models.load_model(correct_model_file)
@@ -801,7 +801,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         ]
 
         # 열 이름 리스트 만들기
-        column_names = [f'{group[0]}_ANGLE' for group in point_groups]
+        column_names = [f'{group[1]}_ANGLE' for group in point_groups]
 
         # 각 그룹의 각도 계산 및 데이터프레임에 추가
         for group, col_name in zip(point_groups, column_names):
@@ -811,8 +811,27 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
                 [row[f'{group[2]}.x'], row[f'{group[2]}.y'], row[f'{group[2]}.z']]
             ), axis=1)
 
-        X = df_cor
-        print(X.shape)
+        length_group = [
+        ('LEFT_WRIST.y', 'LEFT_ELBOW.y'),
+        ('LEFT_ELBOW.y', 'LEFT_SHOULDER.y'),
+        ('LEFT_SHOULDER.y','LEFT_HIP.y'),
+        ('LEFT_HIP.y', 'LEFT_KNEE.y'),
+        ('LEFT_KNEE.y', 'LEFT_ANKLE.y'),
+        ('RIGHT_WRIST.y', 'RIGHT_ELBOW.y'),
+        ('RIGHT_ELBOW.y', 'RIGHT_SHOULDER.y'),
+        ('RIGHT_SHOULDER.y','RIGHT_HIP.y'),
+        ('RIGHT_HIP.y', 'RIGHT_KNEE.y'),
+        ('RIGHT_KNEE.y', 'RIGHT_ANKLE.y'),
+        ]
+
+        # 각 쌍의 차를 계산하고 새로운 열 추가
+        for col1, col2 in length_group:
+            new_col_name = f"{col1.replace('.', '_')}2{col2.replace('.', '_')}"
+            df_cor[new_col_name] = df_cor[col1] - df_cor[col2]
+
+        data = df_cor[['LEFT_WRIST_y2LEFT_ELBOW_y','LEFT_ELBOW_ANGLE','LEFT_ELBOW_y2LEFT_SHOULDER_y','LEFT_SHOULDER_ANGLE','LEFT_SHOULDER_y2LEFT_HIP_y','LEFT_HIP_ANGLE','LEFT_HIP_y2LEFT_KNEE_y','LEFT_KNEE_ANGLE','LEFT_KNEE_y2LEFT_ANKLE_y',sort_column,'RIGHT_KNEE_y2RIGHT_ANKLE_y','RIGHT_KNEE_ANGLE','RIGHT_HIP_y2RIGHT_KNEE_y','RIGHT_HIP_ANGLE','RIGHT_SHOULDER_y2RIGHT_HIP_y','RIGHT_SHOULDER_ANGLE','RIGHT_ELBOW_y2RIGHT_SHOULDER_y','RIGHT_ELBOW_ANGLE','RIGHT_WRIST_y2RIGHT_ELBOW_y']]
+        X = data
+        print('X shape: 'X.shape)
 
         sequence_length = 32  # 시퀀스 길이 설정
         Xsequence = []
@@ -821,6 +840,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
             Xsequence.append(X[i:i+sequence_length])
 
         Xsequence = np.array(Xsequence)
+        print('Xsequence shape: ', Xsequence.shape)
 
         y_pred = correct_model.predict(Xsequence)
 
