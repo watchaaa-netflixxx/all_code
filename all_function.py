@@ -14,6 +14,7 @@ from glob import glob
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from catboost import CatBoostClassifier
 
 
 #################################################################################################################### 
@@ -689,21 +690,45 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
             [row[f'{group[2]}.x'], row[f'{group[2]}.y'], row[f'{group[2]}.z']]
         ), axis=1)
 
-    X = df_cor.iloc[:,-8:]
+    length_group = [
+    ('LEFT_WRIST.y', 'LEFT_ELBOW.y'),
+    ('LEFT_ELBOW.y', 'LEFT_SHOULDER.y'),
+    ('LEFT_SHOULDER.y','LEFT_HIP.y'),
+    ('LEFT_HIP.y', 'LEFT_KNEE.y'),
+    ('LEFT_KNEE.y', 'LEFT_ANKLE.y'),
+    ('RIGHT_WRIST.y', 'RIGHT_ELBOW.y'),
+    ('RIGHT_ELBOW.y', 'RIGHT_SHOULDER.y'),
+    ('RIGHT_SHOULDER.y','RIGHT_HIP.y'),
+    ('RIGHT_HIP.y', 'RIGHT_KNEE.y'),
+    ('RIGHT_KNEE.y', 'RIGHT_ANKLE.y'),
+    ]
+
+    # 각 쌍의 차를 계산하고 새로운 열 추가
+    for col1, col2 in length_group:
+        new_col_name = f"{col1.replace('.', '_')}2{col2.replace('.', '_')}"
+        df_cor[new_col_name] = df_cor[col1] - df_cor[col2]
+
+    X = df_cor[['LEFT_WRIST_y2LEFT_ELBOW_y','LEFT_ELBOW_ANGLE','LEFT_ELBOW_y2LEFT_SHOULDER_y','LEFT_SHOULDER_ANGLE','LEFT_SHOULDER_y2LEFT_HIP_y','LEFT_HIP_ANGLE','LEFT_HIP_y2LEFT_KNEE_y','LEFT_KNEE_ANGLE','LEFT_KNEE_y2LEFT_ANKLE_y','RIGHT_KNEE_y2RIGHT_ANKLE_y','RIGHT_KNEE_ANGLE','RIGHT_HIP_y2RIGHT_KNEE_y','RIGHT_HIP_ANGLE','RIGHT_SHOULDER_y2RIGHT_HIP_y','RIGHT_SHOULDER_ANGLE','RIGHT_ELBOW_y2RIGHT_SHOULDER_y','RIGHT_ELBOW_ANGLE','RIGHT_WRIST_y2RIGHT_ELBOW_y']]
+
+    """ X = df_cor.iloc[:,-8:]
 
     sequence_length = 32  # 시퀀스 길이 설정
     Xsequence = []
 
     for i in range(0, len(X) - sequence_length + 1, sequence_length):
-        Xsequence.append(X[i:i+sequence_length])
+        Xsequence.append(X[i:i+sequence_length]) """
 
-    Xsequence = np.array(Xsequence)
+    X= np.array(X)
 
-    y_pred = class_model.predict(Xsequence)
+    y_pred = class_model.predict(X)
     
-    y_pred_class = np.argmax(y_pred, axis=1)
+    unique_values, counts = np.unique(y_pred, return_counts=True)
 
-    return int(y_pred_class[0])
+    # 가장 많이 나온 클래스 찾기
+    class_int = unique_values[np.argmax(counts)]
+    print('class_int type: ', type(class_int))
+
+    return class_int
 
 
 ####################################################################################################################    correct model
@@ -743,6 +768,17 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         img2data(image_Folder_s, cor_data_Folder_path)
 
         #####################################################
+
+        if class_int == 0:
+        exercise_type = "dead_lift"
+        elif class_int == 1:
+            exercise_type = "barbell_low"
+        elif class_int == 2:
+            exercise_type = "squat"
+        elif class_int == 3:
+            exercise_type = "overhead_press"
+        elif class_int == 4:
+        exercise_type = "push_up"
 
         data_file = cor_data_Folder_path + 'coordinate.csv'
         correct_model_file = model_Folder_path +'correct_model.h5'
@@ -839,46 +875,49 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
     # status 변화를 저장할 리스트
     status_list = []
 
+    # 프레임 수 계산
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
     # setup mediapipe
     mp_drawing_styles = mp.solutions.drawing_styles
     mp_drawing = mp.solutions.drawing_utils
     mp_pose = mp.solutions.pose
 
     with mp_pose.Pose(min_detection_confidence=0.5,
-                      min_tracking_confidence=0.5) as pose:
+                  min_tracking_confidence=0.5) as pose:
 
-        
-
-        counter = 0  # movement of exercise
         prev_status = True    # status 바뀔 때 동영상 시간 초 표시 위함
+        prev_frame_time = 0
+    
+        counter = 0  # movement of exercise
         status = True  # state of move
-
+    
         # 정확도 측정용 카운트
         good = 0
         bad = 0
         acc_i = 0
-
+    
         while cap.isOpened():
             ret, frame = cap.read()
-
+    
             if not ret:
                 break
-
+            
             # 불러온 동영상 frame setting
             frame = cv2.resize(frame, (frame_width, frame_height), interpolation=cv2.INTER_AREA)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
+    
             # mediapipe 적용
             results = pose.process(frame)
-
+    
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
+    
             try:
                 # count 계산
                 landmarks = results.pose_landmarks.landmark
                 counter, status = TypeOfExercise(landmarks).calculate_exercise(
                     exercise_type, counter, status)
-
+    
                 # 정확도 label 1이면 good 이라고 설정
                 if prev_status == False and status == True:
                     if cor_label[acc_i] == 1:
@@ -887,29 +926,29 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
                     else:
                         bad += 1
                         acc_i += 1
-
+    
                 prev_status = status
-
+    
             except Exception as e:
                 print(f'Error in row: {e}')
-
+    
             # status 변화를 저장
             status_list.append(status)
-
+    
             # 빈 프레임 생성 (흰 배경)
             blank_frame = np.ones((frame_height, frame_width, 3), np.uint8) * 255
-
+    
             # RGB로 변환 (없으면 skeleton 품질 안좋아짐)
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
+    
             # Pose 적용
             results = pose.process(frame_rgb)
-
+    
             if results.pose_landmarks is not None:
-
+            
                 # 화면에 정보 표시
                 blank_frame = score_table_plus(exercise_type, blank_frame, counter, good, bad, status)
-
+    
                 # 스켈레톤 그리기
                 mp_drawing.draw_landmarks(
                     blank_frame,
@@ -917,16 +956,15 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
                     mp_pose.POSE_CONNECTIONS,
                     landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
                 )
-
+    
                 # output 영상에 추가
                 out.write(blank_frame)
-
+    
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
-
+            
         out.release()
         cap.release()
         cv2.destroyAllWindows()
-
 
 
