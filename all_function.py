@@ -666,7 +666,9 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
     class_model_file = model_Folder_path +'classify_catboost_model.h5'
 
     # 분류 model load
-    class_model = tf.keras.models.load_model(class_model_file)
+
+    class_model = CatBoostClassifier()
+    class_model.save_model(class_model_file)
 
     # 32*99 dataframe
     df_cor = pd.read_csv(data_file)
