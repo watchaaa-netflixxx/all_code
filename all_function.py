@@ -777,11 +777,9 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
 
         y_pred_class = np.argmax(y_pred, axis=1)
         
-        print(y_pred_class)
 
-        print(int(y_pred_class[1]))
 
-        cor_label.append(int(y_pred_class[1]))
+        cor_label.append(int(y_pred_class[0]))
 
         # print(cor_label)
 
@@ -822,7 +820,7 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
     frame_height = 480
 
     # VideoWriter 설정
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(skeleton_output_path, fourcc, 30, (frame_width, frame_height))
 
     # status 변화를 저장할 리스트
