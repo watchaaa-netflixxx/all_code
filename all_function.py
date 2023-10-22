@@ -79,7 +79,7 @@ def vid2img(cut_video, image_Folder_path , rate=0.5, frameName='frame'):     # �
             break
 
         # print('extracting frame ' + frameName + '-%s.png' % str(count).zfill(2))
-        name = image_Folder_path  + '/' + frameName + '-%s.png' % str(count).zfill(2) # save frame as PNG file
+        name = image_Folder_path  + '\\' + frameName + '-%s.png' % str(count).zfill(2) # save frame as PNG file
         cv2.imwrite(name, image)
         frame += rate
         count += 1
@@ -657,7 +657,7 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
     print('class_model : vid2img finish') 
 
     # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
-    image_Folder_s = image_Folder_path +'/'
+    image_Folder_s = image_Folder_path +'\\'
     img2data(image_Folder_s, data_Folder_path )
     print('class_model : img2data finish') 
     #####################################################
@@ -668,7 +668,7 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
     # 분류 model load
 
     class_model = CatBoostClassifier()
-    class_model.save_model(class_model_file)
+    class_model.load_model(class_model_file)
 
     # 32*99 dataframe
     df_cor = pd.read_csv(data_file)
@@ -714,10 +714,10 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
         df_cor[new_col_name] = df_cor[col1] - df_cor[col2]
 
     X = df_cor[['LEFT_WRIST_y2LEFT_ELBOW_y','LEFT_ELBOW_ANGLE','LEFT_ELBOW_y2LEFT_SHOULDER_y','LEFT_SHOULDER_ANGLE','LEFT_SHOULDER_y2LEFT_HIP_y','LEFT_HIP_ANGLE','LEFT_HIP_y2LEFT_KNEE_y','LEFT_KNEE_ANGLE','LEFT_KNEE_y2LEFT_ANKLE_y','RIGHT_KNEE_y2RIGHT_ANKLE_y','RIGHT_KNEE_ANGLE','RIGHT_HIP_y2RIGHT_KNEE_y','RIGHT_HIP_ANGLE','RIGHT_SHOULDER_y2RIGHT_HIP_y','RIGHT_SHOULDER_ANGLE','RIGHT_ELBOW_y2RIGHT_SHOULDER_y','RIGHT_ELBOW_ANGLE','RIGHT_WRIST_y2RIGHT_ELBOW_y']]
-    print('X.columns : ',X.columns)
+    print('X.columns length : ', len(X.columns))
 
     y_pred = class_model.predict(X)
-    print('y_pred : ', y_pred)
+    print('y_pred length: ', len(y_pred))
     
     unique_values, counts = np.unique(y_pred, return_counts=True)
 
@@ -727,7 +727,7 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
     class_int = most_frequent_class
     print(f"The most frequent class is : {class_int}")
 
-    return class_int
+    return int(class_int)
 
 
 ####################################################################################################################    correct model
@@ -765,7 +765,7 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         print('correct_model : vid2img_anything finish') 
 
         # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
-        image_Folder_s = cor_image_Folder_path +'/'
+        image_Folder_s = cor_image_Folder_path +'\\'
         img2data(image_Folder_s, cor_data_Folder_path)
         print('correct_model : img2data finish')
 
@@ -773,17 +773,21 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
 
         if class_int == 0:
             correct_model_file = model_Folder_path +'0_correct_model.h5'
+            sort_column = 'LEFT_WRIST.y'
         elif class_int == 1:
             correct_model_file = model_Folder_path +'1_correct_model.h5'
+            sort_column = 'LEFT_WRIST.y'
         elif class_int == 2:
             correct_model_file = model_Folder_path +'2_correct_model.h5'
+            sort_column = 'LEFT_HIP.y'
         elif class_int == 3:
             correct_model_file = model_Folder_path +'3_correct_model.h5'
+            sort_column = 'LEFT_WRIST.y'
         elif class_int == 4:
             correct_model_file = model_Folder_path +'4_correct_model.h5'
+            sort_column = 'LEFT_SHOULDER.y'
 
         data_file = cor_data_Folder_path + 'coordinate.csv'
-        # correct_model_file = model_Folder_path +'correct_model.h5'
 
         # 분류 model load
         correct_model = tf.keras.models.load_model(correct_model_file)
@@ -830,6 +834,8 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         for col1, col2 in length_group:
             new_col_name = f"{col1.replace('.', '_')}2{col2.replace('.', '_')}"
             df_cor[new_col_name] = df_cor[col1] - df_cor[col2]
+
+        
 
         data = df_cor[['LEFT_WRIST_y2LEFT_ELBOW_y','LEFT_ELBOW_ANGLE','LEFT_ELBOW_y2LEFT_SHOULDER_y','LEFT_SHOULDER_ANGLE','LEFT_SHOULDER_y2LEFT_HIP_y','LEFT_HIP_ANGLE','LEFT_HIP_y2LEFT_KNEE_y','LEFT_KNEE_ANGLE','LEFT_KNEE_y2LEFT_ANKLE_y',sort_column,'RIGHT_KNEE_y2RIGHT_ANKLE_y','RIGHT_KNEE_ANGLE','RIGHT_HIP_y2RIGHT_KNEE_y','RIGHT_HIP_ANGLE','RIGHT_SHOULDER_y2RIGHT_HIP_y','RIGHT_SHOULDER_ANGLE','RIGHT_ELBOW_y2RIGHT_SHOULDER_y','RIGHT_ELBOW_ANGLE','RIGHT_WRIST_y2RIGHT_ELBOW_y']]
         X = data
@@ -984,5 +990,4 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
         out.release()
         cap.release()
         cv2.destroyAllWindows()
-
 
