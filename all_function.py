@@ -649,18 +649,21 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
     #####################################################
     # 15초 cut하여 저장
     vid_cut(uploaded_video, Vid_Folder_path)
+    print('class_model : vid_cut finish')
 
     # 32개 이미지 cut하여 저장
     cut_video = Vid_Folder_path + '15s.mp4'
-    vid2img(cut_video , image_Folder_path ) 
+    vid2img(cut_video , image_Folder_path )
+    print('class_model : vid2img finish') 
 
     # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
     image_Folder_s = image_Folder_path +'/'
     img2data(image_Folder_s, data_Folder_path )
+    print('class_model : img2data finish') 
     #####################################################
 
     data_file = data_Folder_path + 'coordinate.csv'
-    class_model_file = model_Folder_path +'classify_model.h5'
+    class_model_file = model_Folder_path +'classify_catboost_model.h5'
 
     # 분류 model load
     class_model = tf.keras.models.load_model(class_model_file)
@@ -709,21 +712,20 @@ def class_model(uploaded_video, Vid_Folder_path, image_Folder_path, data_Folder_
         df_cor[new_col_name] = df_cor[col1] - df_cor[col2]
 
     X = df_cor[['LEFT_WRIST_y2LEFT_ELBOW_y','LEFT_ELBOW_ANGLE','LEFT_ELBOW_y2LEFT_SHOULDER_y','LEFT_SHOULDER_ANGLE','LEFT_SHOULDER_y2LEFT_HIP_y','LEFT_HIP_ANGLE','LEFT_HIP_y2LEFT_KNEE_y','LEFT_KNEE_ANGLE','LEFT_KNEE_y2LEFT_ANKLE_y','RIGHT_KNEE_y2RIGHT_ANKLE_y','RIGHT_KNEE_ANGLE','RIGHT_HIP_y2RIGHT_KNEE_y','RIGHT_HIP_ANGLE','RIGHT_SHOULDER_y2RIGHT_HIP_y','RIGHT_SHOULDER_ANGLE','RIGHT_ELBOW_y2RIGHT_SHOULDER_y','RIGHT_ELBOW_ANGLE','RIGHT_WRIST_y2RIGHT_ELBOW_y']]
-    print(len(X))
-    sequence_length = 32  # 시퀀스 길이 설정
-    Xsequence = []
+    print('X.columns : ',X.columns)
 
-    for i in range(0, len(X) - sequence_length + 1, sequence_length):
-        Xsequence.append(X[i:i+sequence_length]) 
+    y_pred = class_model.predict(X)
+    print('y_pred : ', y_pred)
+    
+    unique_values, counts = np.unique(y_pred, return_counts=True)
 
-    Xsequence = np.array(Xsequence)
-    print('Xsequence.shape: ', Xsequence.shape)
+    # 가장 많이 나온 클래스 찾기
+    most_frequent_class = unique_values[np.argmax(counts)]
 
-    y_pred = class_model.predict(Xsequence)
-    print('y_pred: ', y_pred)
-    y_pred_class = np.argmax(y_pred, axis=1)
+    class_int = most_frequent_class
+    print(f"The most frequent class is : {class_int}")
 
-    return int(y_pred_class[0])
+    return class_int
 
 
 ####################################################################################################################    correct model
@@ -741,8 +743,9 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
     # model_Folder_path = '../model/'	                    (classifycation model이 있는 폴더)
 
     # 카운트 별로 video 자르기
-    # cut_video = Vid_Folder_path + '15s.mp4'
-    # vid2time(class_int, cut_video, count_cut_Folder_path)
+    cut_video = Vid_Folder_path + '15s.mp4'
+    vid2time(class_int, cut_video, count_cut_Folder_path)
+    print('correct_model : vid2time finish')
 
     # count_{i}.mp4 파일이 몇개인지 모름 (만들 수 있을것 같긴 한데 귀찮)
     # glob로 파일 전부 긁어와서 for i in glob 로 몇 개인지 몰라도 다 반복되게 해야함.
@@ -756,11 +759,13 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         print(count_cut_video)
 
         # 32개 이미지 cut하여 저장
-        vid2img_anything(count_cut_video, cor_image_Folder_path, num_frames=32, frameName='frame') 
+        vid2img_anything(count_cut_video, cor_image_Folder_path, num_frames=32, frameName='frame')
+        print('correct_model : vid2img_anything finish') 
 
         # 32개 이미지에서 좌표값 뽑아내어 csv 파일 저장
         image_Folder_s = cor_image_Folder_path +'/'
         img2data(image_Folder_s, cor_data_Folder_path)
+        print('correct_model : img2data finish')
 
         #####################################################
 
@@ -890,9 +895,6 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
     # status 변화를 저장할 리스트
     status_list = []
 
-    # 프레임 수 계산
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
     # setup mediapipe
     mp_drawing_styles = mp.solutions.drawing_styles
     mp_drawing = mp.solutions.drawing_utils
@@ -902,7 +904,6 @@ def vid2Mvid(class_int, Vid_Folder_path, MVid_Folder_path, cor_label):  # 작동
                   min_tracking_confidence=0.5) as pose:
 
         prev_status = True    # status 바뀔 때 동영상 시간 초 표시 위함
-        prev_frame_time = 0
     
         counter = 0  # movement of exercise
         status = True  # state of move
