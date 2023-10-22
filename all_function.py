@@ -401,7 +401,7 @@ class TypeOfExercise(BodyPartAngle):
             if avg_leg_angle < 120:
                 status = False
         else:
-            if avg_leg_angle > 150:
+            if avg_leg_angle > 170:
                 counter += 1
                 status = True
 
@@ -440,6 +440,8 @@ def save_video_segment(video_path, start_frame, end_frame, output_path):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
 
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
     # 영상을 읽어서 저장
     for i in range(start_frame, end_frame):
         # 프레임 읽기
@@ -456,89 +458,6 @@ def save_video_segment(video_path, start_frame, end_frame, output_path):
 
 # 카운트 기준 영상 자르기
 # count_{i} 로 저장됨
-""" def vid2time(class_int, cut_video, count_cut_Folder_path):
-
-    if class_int == 0:
-        exercise_type = "dead_lift"
-    elif class_int == 1:
-        exercise_type = "barbell_low"
-    elif class_int == 2:
-        exercise_type = " squat"
-    elif class_int == 3:
-        exercise_type = "overhead_press"
-    elif class_int == 4:
-        exercise_type = "push_up"
-
-    # 비디오 업로드
-    cap = cv2.VideoCapture(cut_video)
-
-    # status 변화를 저장할 리스트
-    status_list = []
-
-    # 프레임 수 계산
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    # setup mediapipe
-    mp_drawing = mp.solutions.drawing_utils
-    mp_pose = mp.solutions.pose
-
-    with mp_pose.Pose(min_detection_confidence=0.5,
-                      min_tracking_confidence=0.5) as pose:
-
-        prev_status = True    # status 바뀔 때 동영상 시간 초 표시 위함
-        prev_frame_time = 0
-
-        counter = 0  # movement of exercise
-        status = True  # state of move
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-
-            if not ret:
-                break
-            
-            # frame setup
-            frame = cv2.resize(frame, (800, 480), interpolation=cv2.INTER_AREA)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            results = pose.process(frame)
-
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-            try:
-                landmarks = results.pose_landmarks.landmark
-                counter, status = TypeOfExercise(landmarks).calculate_exercise(
-                    exercise_type, counter, status)
-
-                prev_status = status
-
-            except Exception as e:
-                print(f'Error in row: {e}')
-
-            # status 변화를 저장
-            status_list.append(status)
-
-            if cv2.waitKey(10) & 0xFF == ord('q'):
-                break
-    
-    # 카운트 별로 동영상 자르고 저장
-    start_frame = 1
-    count_i = 1
-
-    # 각각의 status 변화를 확인하며 동영상 저장 (모든 운동에 대해 적용됨!) 
-    # False -> True 기준으로 나눔
-    for i in range(3, len(status_list)):
-        if status_list[i-1] == False and status_list[i] == True:
-            end_frame = int(i * (total_frames / len(status_list))) + 25
-            # 저장할 파일 경로 설정
-            output_path = count_cut_Folder_path + f'count_{count_i}.mp4'
-            # 동영상 저장
-            save_video_segment(cut_video, start_frame, end_frame, output_path)
-            start_frame = int(i * (total_frames / len(status_list)))
-            count_i += 1
-
-    cap.release()
-    cv2.destroyAllWindows() """
 
 mp_pose = mp.solutions.pose
 
@@ -568,8 +487,10 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):
     with mp_pose.Pose(min_detection_confidence=0.5,
                       min_tracking_confidence=0.5) as pose:
 
-        # prev_status = True
-        # prev_frame_time = 0
+        prev_status = True
+        prev_frame_time = 0
+        current_frame_number = 0
+        frame_numbers_list = []
 
         counter = 0
         status = True
@@ -594,9 +515,12 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):
                     counter, status = TypeOfExercise(landmarks).calculate_exercise(
                         exercise_type, counter, status)
 
-                    # prev_status = status
+                    if prev_status == False and status == True:
+                        frame_numbers_list.append(current_frame_number)
 
                     status_list.append(status)
+
+                    prev_status = status
 
                 except Exception as e:
                     print(f'Error in row: {e}')
@@ -604,27 +528,26 @@ def vid2time(class_int, cut_video, count_cut_Folder_path):
             else:
                 print("No landmarks detected in this frame")
 
+            current_frame_number += 1
+
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
+        
+        print('len(frame_numbers_list) : ', len(frame_numbers_list))
 
         count_i = 1
 
         start_frame = 1
 
-        for i in range(1, len(status_list)-2):
-            if status_list[i-1] == False and status_list[i] == True:
-                # start_frame = int(i * (total_frames / len(status_list))) - 10
+        for i in range(len(frame_numbers_list)):
+            
+            end_frame = frame_numbers_list[i]
 
-                end_frame = int(i * (total_frames / len(status_list))) + 10
-
-                # Ensure start_frame and end_frame are within valid range
-                # start_frame = max(start_frame, 1)
-                end_frame = min(end_frame, total_frames)
-
-                output_path = count_cut_Folder_path + f'count_{count_i}.mp4'
-                save_video_segment(video_source, start_frame, end_frame, output_path)
-                count_i += 1
-                start_frame = int(i * (total_frames / len(status_list)))
+            output_path = count_cut_Folder_path + f'count_{count_i}.mp4'
+            save_video_segment(video_source, start_frame, end_frame, output_path)
+            
+            count_i += 1
+            start_frame = end_frame
 
         cap.release()
         cv2.destroyAllWindows()
@@ -853,10 +776,12 @@ def correct_model(class_int, Vid_Folder_path, count_cut_Folder_path, cor_image_F
         y_pred = correct_model.predict(Xsequence)
 
         y_pred_class = np.argmax(y_pred, axis=1)
+        
+        print(y_pred_class)
 
-        print(int(y_pred_class[0]))
+        print(int(y_pred_class[1]))
 
-        cor_label.append(int(y_pred_class[0]))
+        cor_label.append(int(y_pred_class[1]))
 
         # print(cor_label)
 
